@@ -21,15 +21,10 @@
     --bad: #c0392b;
     --thai: Sarabun, Thonburi, "Leelawadee UI", sans-serif;
     --hand: Caveat, "Comic Sans MS", cursive;
-    /* Price tags and banknotes are physical objects: same colors in both themes. */
+    /* Price tags are physical objects: same colors in both themes. */
     --card-stock: #fffbe8;
     --card-ink: #1b1b1b;
     --card-red: #c8201e;
-    --note-20: #3f8f4f;
-    --note-50: #2f64b5;
-    --note-100: #c23b32;
-    --note-500: #7b4aa6;
-    --note-1000: #8a6a4a;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -60,21 +55,12 @@
   button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* Money */
-  .notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
-  .note {
-    aspect-ratio: 2 / 1; max-width: 100%; border-radius: 6px; color: #fff; padding: 6px 10px;
-    display: flex; flex-direction: column; justify-content: space-between;
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15);
-  }
-  .note b { font-size: 1.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
-  .note span { font-family: var(--thai); font-size: 0.85rem; opacity: 0.95; }
-  .coins { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
-  .coin {
-    width: 3.2em; height: 3.2em; border-radius: 50%; display: grid; place-items: center; font-weight: 600;
-    font-size: 0.9rem; color: var(--card-ink); background: radial-gradient(circle at 35% 30%, #f3f3f3, #a9adb3);
-  }
-  .coin.gold { background: radial-gradient(circle at 35% 30%, #fbe7a1, #c39a3a); }
-  .coin.bi { background: radial-gradient(circle, #f6df8f 0 45%, #b8bcc2 47%); }
+  .notes { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .notes figure, .coins figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .notes figcaption, .coins figcaption { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .banknote, .coin { display: block; max-width: 100%; height: auto; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2)); }
+  .coins { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; align-items: flex-end; }
+  .usd { color: var(--good); font-weight: 600; }
 
   /* Price tags */
   .tags { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
@@ -125,7 +111,7 @@
 </head>
 <body>
 <div class="wrap">
-  <nav class="nav"><a href="index.html">← Home</a> · <a href="phrases.html">Phrases</a> · <a href="signs.html">Signs</a> · <a href="alphabet.html">Letters</a></nav>
+  <nav class="nav"><a href="index.html">← Home</a> · <a href="phrases.html">Phrases</a> · <a href="signs.html">Signs</a> · <a href="money.html">Money</a> · <a href="alphabet.html">Letters</a></nav>
   <h1>At the Market</h1>
   <p class="lead">What the money looks like, how prices are written on tags and stalls, how Thai numbers are
     built, and what to say when you buy.</p>
@@ -133,17 +119,10 @@
   <h2>The money</h2>
   <p>The currency is the <b>baht</b>, <span class="th">บาท</span> (bàat), written <b>฿</b>. A baht is 100
     <b>satang</b>, <span class="th">สตางค์</span> (sà-dtaang), but you'll rarely see satang outside supermarket receipts.
-    Banknotes are easy to tell apart by color:</p>
+    Each note has its own color and gets longer as the value goes up; coins get bigger. All drawn to scale, with
+    dollar values at $0.03 to the baht. The <a href="money.html">money primer</a> covers every note and coin in detail.</p>
   <div class="notes" id="notes"></div>
-  <div class="coins">
-    <span class="muted">Coins:</span>
-    <span class="coin gold" title="25 and 50 satang">25s</span>
-    <span class="coin gold">50s</span>
-    <span class="coin">฿1</span>
-    <span class="coin gold">฿2</span>
-    <span class="coin">฿5</span>
-    <span class="coin bi">฿10</span>
-  </div>
+  <div class="coins" id="coins"></div>
   <p class="muted">Most stalls and shops also take a bank-app QR payment called PromptPay. Look for a printed QR code
     and the words <span class="th">สแกนจ่าย</span> (sà-gaen jàai, scan to pay).</p>
 
@@ -168,6 +147,7 @@
       <dt>Thai digits</dt><dd class="big" id="n-digits" lang="th"></dd>
       <dt>In words</dt><dd class="big" id="n-words" lang="th"></dd>
       <dt>Say it</dt><dd id="n-ro"></dd>
+      <dt>In dollars</dt><dd id="n-usd" class="usd"></dd>
     </dl>
     <p style="margin:10px 0 0"><button id="n-say" type="button">🔊 Listen</button></p>
   </div>
@@ -193,6 +173,7 @@
 </div>
 
 <script src="thai-data.js"></script>
+<script src="money-art.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 function esc(s) {
@@ -251,6 +232,7 @@ function convert() {
   $("n-digits").textContent = ok ? thaiDigits(n) : "—";
   $("n-words").textContent = ok ? thaiWords(n) : "Enter a whole number up to 999,999,999";
   $("n-ro").textContent = ok ? romanWords(n) : "";
+  $("n-usd").textContent = ok ? `≈ ${fmtUsd(toUsd(n))} (if it's a price in baht)` : "";
 }
 
 // ---- Speech ----
@@ -270,8 +252,6 @@ function speak(text) {
 }
 
 // ---- Money and tags ----
-const NOTES = [[20, "--note-20", "green"], [50, "--note-50", "blue"], [100, "--note-100", "red"],
-  [500, "--note-500", "purple"], [1000, "--note-1000", "brown"]];
 
 // tag: HTML of the price tag. Parts in <em> are what the explanation is about.
 const TAGS = [
@@ -288,9 +268,10 @@ const TAGS = [
 ];
 
 function renderMoney() {
-  $("notes").innerHTML = NOTES.map(([n, token, color]) =>
-    `<div class="note" style="background: var(${token})" title="${color}"><b>฿${commas(n)}</b>
-      <span lang="th">${thaiWords(n)}บาท</span></div>`).join("");
+  $("notes").innerHTML = BANKNOTES.map(n =>
+    `<figure>${banknoteSvg(n, "front", 0.9)}<figcaption>฿${commas(n.v)} · ${n.color} · <span class="usd">${fmtUsd(toUsd(n.v))}</span></figcaption></figure>`).join("");
+  $("coins").innerHTML = COINS.map(c =>
+    `<figure>${coinSvg(c, 2.4)}<figcaption>${c.v < 1 ? c.v * 100 + " satang" : "฿" + c.v}</figcaption></figure>`).join("");
   $("tags").innerHTML = TAGS.map(t =>
     `<div class="tagrow"><div class="pricetag" lang="th">${t.tag}</div><p>${t.text}</p></div>`).join("");
 }
@@ -367,7 +348,9 @@ function answer(btn) {
     else if (b === btn) b.classList.add("wrong");
   });
   const how = drill.q.words !== undefined ? ` Said aloud: ${romanWords(drill.q.words)} bàat.` : "";
-  $("d-feedback").textContent = `${ok ? "Right." : "Not quite."} It says ${drill.q.right}.${how} Tap any answer for the next tag.`;
+  const baht = drill.q.right.match(/([\d,]+) baht/);
+  const usd = baht ? ` That's about ${fmtUsd(toUsd(Number(baht[1].replace(/,/g, ""))))}.` : "";
+  $("d-feedback").textContent = `${ok ? "Right." : "Not quite."} It says ${drill.q.right}.${usd}${how} Tap any answer for the next tag.`;
   $("d-score").textContent = `${drill.right} / ${drill.total} correct`;
 }
 

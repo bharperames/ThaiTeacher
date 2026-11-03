@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thai Money</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Figtree:wght@400;500;600&family=Overpass:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  /* Layout: one reading column. Dollars first, so every baht figure after it
+     can be read in both currencies; then notes, coins, prices and two drills. */
+  :root {
+    --bg: #f6f3ee;
+    --surface: #ffffff;
+    --text: #1f1d1a;
+    --muted: #5f5a52;
+    --border: #e2dcd2;
+    --accent: #b5452b;
+    --usd: #1e7a52;
+    --good: #1e8449;
+    --bad: #c0392b;
+    --thai: Sarabun, Thonburi, "Leelawadee UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17161a; --surface: #222127; --text: #f1eee8; --muted: #b4aea4; --border: #3a3840;
+      --accent: #f08a68; --usd: #5fcf8c; --good: #5fcf8c; --bad: #ef6f60;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17161a; --surface: #222127; --text: #f1eee8; --muted: #b4aea4; --border: #3a3840;
+    --accent: #f08a68; --usd: #5fcf8c; --good: #5fcf8c; --bad: #ef6f60;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 Figtree, system-ui, sans-serif; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 24px 16px 64px; }
+  .nav { font-size: 0.9rem; margin-bottom: 16px; }
+  a { color: var(--accent); }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 40px 0 8px; }
+  h3 { font-size: 1rem; margin: 0; }
+  p { max-width: 64ch; }
+  .lead { color: var(--muted); margin: 0 0 8px; }
+  .muted { color: var(--muted); }
+  .th { font-family: var(--thai); }
+  .usd { color: var(--usd); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .num { font-variant-numeric: tabular-nums; }
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 8px 12px; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible, input:focus-visible, .note-flip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+
+  /* Conversion */
+  .rule { font-size: 1.05rem; }
+  .rule b { color: var(--accent); }
+  .convert { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .convert label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+  .convert input { font: inherit; font-size: 1.3rem; width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border);
+                   background: var(--bg); color: var(--text); font-variant-numeric: tabular-nums; }
+  .work { margin-top: 10px; color: var(--muted); font-size: 0.95rem; min-height: 1.5em; }
+  .anchors { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 14px; }
+  .anchor { background: var(--bg); border-radius: 10px; padding: 8px 10px; text-align: center; }
+  .anchor b { display: block; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+
+  /* Banknotes */
+  .notes { display: flex; flex-direction: column; gap: 14px; }
+  .notecard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+  .note-flip { perspective: 1000px; cursor: pointer; background: none; border: 0; padding: 0; }
+  .note-inner { display: grid; transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.2, 1); transform-style: preserve-3d; }
+  .note-flip.flipped .note-inner { transform: rotateY(180deg); }
+  .note-face { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .note-face.back { transform: rotateY(180deg); }
+  .banknote { display: block; max-width: 100%; height: auto; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18)); }
+  .noteinfo h3 { font-size: 1.15rem; }
+  .noteinfo .th { font-size: 1.15rem; }
+  .noteinfo p { margin: 4px 0 0; font-size: 0.92rem; color: var(--muted); }
+  .chip { display: inline-block; font-size: 0.75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; margin-left: 6px; vertical-align: 2px; }
+  @media (max-width: 640px) { .notecard { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .note-inner { transition: none; } }
+
+  /* Coins */
+  .series { display: flex; gap: 8px; margin: 8px 0 14px; flex-wrap: wrap; }
+  .series button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .coins { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+  .coincard { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; align-items: center; }
+  .coincard .coinbox { display: grid; place-items: center; height: 84px; }
+  .coin { display: block; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25)); }
+  .coincard p { margin: 2px 0 0; font-size: 0.85rem; color: var(--muted); }
+
+  /* Prices */
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  td, th { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+  td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Drills */
+  .drill { text-align: center; }
+  .drill .item { font-size: 1.1rem; }
+  .drill .price { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; margin: 4px 0; }
+  .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 420px; margin: 12px auto 0; }
+  button.right { border-color: var(--good); color: var(--good); font-weight: 600; }
+  button.wrong { border-color: var(--bad); color: var(--bad); }
+  .feedback { min-height: 3em; margin: 12px auto 0; color: var(--muted); max-width: 52ch; }
+  .score { font-size: 0.9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .till { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; margin-top: 12px; }
+  .till button { padding: 4px; background: none; border: 1px solid transparent; border-radius: 8px; }
+  .till button:hover { border-color: var(--border); }
+  .tray { min-height: 60px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center;
+          background: var(--bg); border-radius: 12px; padding: 8px; margin-top: 12px; }
+  .total { font-size: 1.2rem; font-weight: 600; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .total.done { color: var(--good); }
+  .total.over { color: var(--bad); }
+  .row { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+  .small { font-size: 0.85rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav"><a href="index.html">← Home</a> · <a href="phrases.html">Phrases</a> · <a href="signs.html">Signs</a> · <a href="market.html">Market</a> · <a href="alphabet.html">Letters</a></nav>
+  <h1>Thai Money</h1>
+  <p class="lead">The notes and coins you'll carry in Bangkok, what each is worth in dollars, and practice
+    until prices in baht feel natural.</p>
+
+  <h2>Thinking in dollars</h2>
+  <div class="panel">
+    <p class="rule" style="margin-top:0">This app uses <b>1 baht = $0.03</b>, so about <b>33 baht to the dollar</b>.
+      The quick way to convert in your head: <b>multiply the baht by 3, then move the decimal point two places left</b>.</p>
+    <p class="muted" style="margin-bottom:0">450 baht → 450 × 3 = 1,350 → <span class="usd">$13.50</span>.
+      Going the other way, dollars × 33 gets you close: $10 → about ฿330.</p>
+    <div class="convert">
+      <div><label for="c-baht">Baht ฿</label><input id="c-baht" type="number" min="0" step="1" value="450" inputmode="decimal"></div>
+      <div><label for="c-usd">US dollars $</label><input id="c-usd" type="number" min="0" step="0.01" inputmode="decimal"></div>
+    </div>
+    <div class="work" id="c-work"></div>
+    <div class="anchors" id="anchors"></div>
+  </div>
+
+  <h2>Banknotes</h2>
+  <p class="lead">Five notes, each its own color, and each one longer than the last (drawn to scale here). Tap a note
+    to turn it over. The King's portrait is on every front; the backs show two earlier kings each.</p>
+  <div class="notes" id="notes"></div>
+  <p class="small">Notes from the previous series, with King Bhumibol (Rama IX) on the front, are still legal tender
+    and still turn up. They use the same colors and values.</p>
+
+  <h2>Coins</h2>
+  <p class="lead">Six coins, drawn to scale. Two series circulate side by side: the 2018 coins have the King's royal
+    monogram on the back, and older ones show a temple.</p>
+  <div class="series" role="group" aria-label="Coin series">
+    <button id="s-new" aria-pressed="true">2018 series</button>
+    <button id="s-old" aria-pressed="false">Older series</button>
+  </div>
+  <div class="coins" id="coins"></div>
+  <p class="small">Coins are drawn as plain value faces in the right colors and sizes, not as copies of the real designs.</p>
+
+  <h2>What things cost</h2>
+  <p class="lead">Rough Bangkok prices to calibrate against. They vary a lot by place; tourist areas and malls cost more.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th class="r">Baht</th><th class="r">Dollars</th></tr></thead>
+    <tbody id="prices"></tbody>
+  </table></div>
+
+  <h2>What's that in dollars?</h2>
+  <p class="lead">A price in baht; pick the closest dollar amount. Do it in your head first with ×3.</p>
+  <div class="panel drill">
+    <div class="item" id="q-item"></div>
+    <div class="price" id="q-price"></div>
+    <div class="opts" id="q-opts"></div>
+    <div class="feedback" id="q-feedback"></div>
+    <div class="score" id="q-score"></div>
+  </div>
+
+  <h2>Pay exactly</h2>
+  <p class="lead">Tap notes and coins to hand over the exact price, as you would at a stall.</p>
+  <div class="panel drill">
+    <div class="item" id="p-item"></div>
+    <div class="price" id="p-price"></div>
+    <div class="till" id="till"></div>
+    <div class="tray" id="tray" aria-live="polite"></div>
+    <div class="total" id="p-total"></div>
+    <div class="row"><button id="p-undo" type="button">Take one back</button><button id="p-clear" type="button">Start over</button><button id="p-next" type="button">Next price</button></div>
+  </div>
+
+  <h2>About the pictures</h2>
+  <p class="small">The Bank of Thailand requires permission to reproduce images of its banknotes, and bars any depiction
+    that could be seen as disrespectful to the monarchy. So the notes here are labeled outlines, marked SPECIMEN, with the
+    portraits left as named frames rather than drawn. For photographs of the real notes, see the
+    <a href="https://www.bot.or.th/en/our-roles/banknotes/History-and-Series-of-Banknote-And-Commemorative/banknotes-series.html" rel="noopener">Bank of Thailand's banknote pages</a>.</p>
+</div>
+
+<script src="money-art.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+}
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+// ---- Conversion ----
+function showWork(baht) {
+  if (!(baht >= 0)) { $("c-work").textContent = ""; return; }
+  const x3 = baht * 3;
+  $("c-work").innerHTML = `${baht.toLocaleString("en-US")} × 3 = ${x3.toLocaleString("en-US")} → move two places → <span class="usd">${fmtUsd(toUsd(baht))}</span>`;
+}
+$("c-baht").addEventListener("input", () => {
+  const b = Number($("c-baht").value);
+  $("c-usd").value = $("c-baht").value === "" ? "" : (toUsd(b)).toFixed(2);
+  showWork(b);
+});
+$("c-usd").addEventListener("input", () => {
+  const u = Number($("c-usd").value);
+  const b = Math.round(u / USD_PER_BAHT);
+  $("c-baht").value = $("c-usd").value === "" ? "" : b;
+  showWork(b);
+});
+$("c-baht").dispatchEvent(new Event("input"));
+$("anchors").innerHTML = [[10], [20], [100], [500], [1000], [null, 1], [null, 10], [null, 100]].map(([b, u]) => u
+  ? `<div class="anchor"><b class="usd">$${u}</b>≈ ฿${Math.round(u / USD_PER_BAHT).toLocaleString("en-US")}</div>`
+  : `<div class="anchor"><b>฿${b.toLocaleString("en-US")}</b><span class="usd">${fmtUsd(toUsd(b))}</span></div>`).join("");
+
+// ---- Banknotes ----
+$("notes").innerHTML = BANKNOTES.map((n, i) => `
+  <div class="panel notecard">
+    <button class="note-flip" data-i="${i}" type="button" aria-label="Turn the ${n.v} baht note over">
+      <span class="note-inner"><span class="note-face">${banknoteSvg(n, "front")}</span><span class="note-face back">${banknoteSvg(n, "back")}</span></span>
+    </button>
+    <div class="noteinfo">
+      <h3>฿${n.v.toLocaleString("en-US")} <span class="usd">≈ ${fmtUsd(toUsd(n.v))}</span><span class="chip" style="color:${n.ink}">${n.color}</span></h3>
+      <div class="th" lang="th">${n.th} <span class="muted" style="font-family:Figtree">${n.ro}</span></div>
+      <p>${n.w} × 72 mm. Back: ${n.back.join(" and ")}.</p>
+      <p>${esc(n.note)}</p>
+    </div>
+  </div>`).join("");
+$("notes").querySelectorAll(".note-flip").forEach(b => b.onclick = () => b.classList.toggle("flipped"));
+
+// ---- Coins ----
+function renderCoins(series) {
+  $("s-new").setAttribute("aria-pressed", series === "new");
+  $("s-old").setAttribute("aria-pressed", series === "old");
+  $("coins").innerHTML = COINS.map(c => `
+    <div class="panel coincard">
+      <div class="coinbox">${coinSvg(c, 3, series)}</div>
+      <div>
+        <h3>${c.v < 1 ? `${c.v * 100} satang` : `฿${c.v}`} <span class="usd">≈ ${fmtUsd(toUsd(c.v)).replace(/^0¢$/, "1¢")}</span></h3>
+        <div class="th" lang="th">${c.th}${c.nick ? `, <span style="font-family:Figtree">${esc(c.nick)}</span>` : ""}</div>
+        <p>${c.metal === "bimetal" ? "Silver ring, gold center" : c.metal[0].toUpperCase() + c.metal.slice(1) + "-colored"}, ${c.d} mm.
+          Back: ${series === "new" ? "the King's royal monogram" : esc(c.old)}.</p>
+        <p>${esc(c.note)}</p>
+      </div>
+    </div>`).join("");
+}
+$("s-new").onclick = () => renderCoins("new");
+$("s-old").onclick = () => renderCoins("old");
+renderCoins("new");
+
+// ---- Prices ----
+// [item, low baht, high baht]. Rough 2026 Bangkok prices.
+const PRICES = [
+  ["Bottle of water, convenience store", 10, 15],
+  ["Thai iced tea from a cart", 25, 45],
+  ["Bowl of noodle soup at a stall", 50, 70],
+  ["Pad thai at a stall", 60, 100],
+  ["Mango sticky rice", 80, 120],
+  ["Taxi meter starting fare", 35, 35],
+  ["Skytrain (BTS) ride", 17, 65],
+  ["Beer at a bar", 90, 150],
+  ["One-hour Thai massage", 300, 500],
+  ["Market T-shirt", 150, 300],
+  ["Mid-range hotel, one night", 1500, 3000],
+];
+const range = (lo, hi, f) => lo === hi ? f(lo) : `${f(lo)}–${f(hi)}`;
+$("prices").innerHTML = PRICES.map(([item, lo, hi]) =>
+  `<tr><td>${esc(item)}</td><td class="r">${range(lo, hi, fmtBaht)}</td><td class="r usd">${range(lo, hi, b => fmtUsd(toUsd(b)))}</td></tr>`).join("");
+
+// ---- Drill: what's that in dollars? ----
+const quiz = { right: 0, total: 0, answered: false, q: null };
+function nextQuiz() {
+  const [item, lo, hi] = pick(PRICES);
+  const step = hi >= 1000 ? 100 : hi >= 100 ? 10 : 5;
+  const baht = lo === hi ? lo : lo + step * Math.floor(Math.random() * ((hi - lo) / step + 1));
+  const usd = toUsd(baht);
+  const wrong = [usd * 10, usd / 10, usd * 2, usd / 2, usd * 3.3].filter(u => Math.abs(u - usd) > 0.01);
+  const opts = shuffle([usd, ...shuffle(wrong).slice(0, 3)]).map(fmtUsd);
+  quiz.q = { item, baht, right: fmtUsd(usd) };
+  quiz.answered = false;
+  $("q-item").textContent = item;
+  $("q-price").textContent = fmtBaht(baht);
+  $("q-feedback").textContent = "";
+  $("q-opts").innerHTML = [...new Set(opts)].map(o => `<button type="button">${o}</button>`).join("");
+  $("q-opts").querySelectorAll("button").forEach(b => b.onclick = () => answerQuiz(b));
+}
+function answerQuiz(btn) {
+  if (quiz.answered) { nextQuiz(); return; }
+  quiz.answered = true;
+  quiz.total++;
+  const ok = btn.textContent === quiz.q.right;
+  if (ok) quiz.right++;
+  $("q-opts").querySelectorAll("button").forEach(b => {
+    if (b.textContent === quiz.q.right) b.classList.add("right");
+    else if (b === btn) b.classList.add("wrong");
+  });
+  const b = quiz.q.baht;
+  $("q-feedback").textContent = `${ok ? "Right." : "Not quite."} ${b.toLocaleString("en-US")} × 3 = ${(b * 3).toLocaleString("en-US")}, so ${quiz.q.right}. Tap any answer for the next one.`;
+  $("q-score").textContent = `${quiz.right} / ${quiz.total} correct`;
+}
+nextQuiz();
+
+// ---- Drill: pay exactly ----
+const TILL = [...BANKNOTES.map(n => ({ kind: "note", v: n.v, art: n })).reverse(),
+  ...COINS.filter(c => c.v >= 1).map(c => ({ kind: "coin", v: c.v, art: c })).reverse()];
+const pay = { price: 0, item: "", paid: [] };
+function moneyHtml(t, small) {
+  return t.kind === "note" ? banknoteSvg(t.art, "front", small ? 0.55 : 0.75) : coinSvg(t.art, small ? 1.6 : 2);
+}
+function renderPay() {
+  const sum = pay.paid.reduce((a, t) => a + t.v, 0);
+  $("tray").innerHTML = pay.paid.length ? pay.paid.map(t => moneyHtml(t, true)).join("") : `<span class="small">Your money goes here</span>`;
+  const el = $("p-total");
+  el.className = "total" + (sum === pay.price ? " done" : sum > pay.price ? " over" : "");
+  el.innerHTML = sum === pay.price
+    ? `Exactly ${fmtBaht(sum)}. That's <span class="usd">${fmtUsd(toUsd(sum))}</span>.`
+    : sum > pay.price ? `${fmtBaht(sum)} is too much. Take something back.`
+    : `Paid ${fmtBaht(sum)} of ${fmtBaht(pay.price)}`;
+}
+function nextPay() {
+  const [item, lo, hi] = pick(PRICES.filter(p => p[2] < 1000));
+  // Odd amounts make you reach for coins.
+  pay.price = lo === hi ? lo : lo + Math.floor(Math.random() * (hi - lo + 1));
+  pay.item = item;
+  pay.paid = [];
+  $("p-item").textContent = item;
+  $("p-price").innerHTML = `${fmtBaht(pay.price)} <span class="usd" style="font-size:1rem">≈ ${fmtUsd(toUsd(pay.price))}</span>`;
+  renderPay();
+}
+$("till").innerHTML = TILL.map((t, i) => `<button type="button" data-t="${i}" aria-label="${t.v} baht ${t.kind}">${moneyHtml(t)}</button>`).join("");
+$("till").querySelectorAll("button").forEach(b => b.onclick = () => { pay.paid.push(TILL[b.dataset.t]); renderPay(); });
+$("p-undo").onclick = () => { pay.paid.pop(); renderPay(); };
+$("p-clear").onclick = () => { pay.paid = []; renderPay(); };
+$("p-next").onclick = nextPay;
+nextPay();
+</script>
+</body>
+</html>
