@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thai Letter Anatomy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Layout: one reading column; each family is a row of look-alike letters,
+     variants drawn as a stroke diff against the family's base letter. */
+  :root {
+    --bg: #f6f3ee;
+    --surface: #ffffff;
+    --text: #1f1d1a;
+    --muted: #5f5a52;
+    --faint: #d9d2c6;
+    --border: #e2dcd2;
+    --accent: #b5452b;
+    --mid: #2471a3;
+    --high: #b9770e;
+    --low: #1e8449;
+    --good: #1e8449;
+    --bad: #c0392b;
+    --thai: Sarabun, "Thonburi", "Leelawadee UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17161a; --surface: #222127; --text: #f1eee8; --muted: #b4aea4;
+      --faint: #4a4750; --border: #3a3840; --accent: #f08a68;
+      --mid: #6fb3e8; --high: #f0b35a; --low: #5fcf8c; --good: #5fcf8c; --bad: #ef6f60;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17161a; --surface: #222127; --text: #f1eee8; --muted: #b4aea4;
+    --faint: #4a4750; --border: #3a3840; --accent: #f08a68;
+    --mid: #6fb3e8; --high: #f0b35a; --low: #5fcf8c; --good: #5fcf8c; --bad: #ef6f60;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 Figtree, system-ui, sans-serif; }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 24px 16px 64px; }
+  a { color: var(--accent); }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.2rem; margin: 40px 0 8px; }
+  h3 { font-size: 1rem; margin: 0; }
+  p.lead { color: var(--muted); max-width: 62ch; margin: 0 0 8px; }
+  .nav { font-size: 0.9rem; margin-bottom: 16px; }
+  .th { font-family: var(--thai); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.9rem; color: var(--muted); margin: 12px 0; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+
+  .parts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .part { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .part .eg { font-family: var(--thai); font-size: 2rem; line-height: 1.3; letter-spacing: 0.08em; }
+  .part p { margin: 4px 0 0; font-size: 0.88rem; color: var(--muted); }
+
+  .family { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-top: 14px; }
+  .family header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .family header p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+  .letters { display: flex; flex-wrap: wrap; gap: 12px; }
+  .letter { width: 168px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+  .letter canvas { width: 140px; height: 140px; display: block; }
+  .letter.base canvas { background: color-mix(in srgb, var(--bg) 70%, transparent); border-radius: 10px; }
+  .name { font-weight: 600; font-size: 0.95rem; }
+  .meta { font-size: 0.82rem; color: var(--muted); }
+  .diff { font-size: 0.82rem; color: var(--accent); }
+  .cls { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
+  .cls-mid { color: var(--mid); } .cls-high { color: var(--high); } .cls-low { color: var(--low); }
+  .obs { font-size: 0.75rem; color: var(--muted); font-style: italic; }
+
+  .drill { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px 16px; text-align: center; }
+  .drill .big { font-family: var(--thai); font-size: 6rem; line-height: 1.25; }
+  .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 460px; margin: 12px auto 0; }
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 10px 12px; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.right { border-color: var(--good); color: var(--good); font-weight: 600; }
+  button.wrong { border-color: var(--bad); color: var(--bad); }
+  .feedback { min-height: 3em; margin-top: 12px; color: var(--muted); }
+  .score { font-size: 0.9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav"><a href="index.html">← Home</a> · <a href="phrases.html">Phrase trainer</a></nav>
+  <h1>Thai Letter Anatomy</h1>
+  <p class="lead">Thai has 44 consonants, but far fewer distinct shapes. Most letters are a base shape plus one small
+    part: a tail, a foot, a notch or a flick. Learn the handful of parts, then learn each family as
+    “the base letter, plus this.”</p>
+
+  <h2>The parts</h2>
+  <div class="parts">
+    <div class="part"><h3>Head <span class="th">หัว</span></h3><div class="eg">บ ม อ</div>
+      <p>The small loop. You start writing a letter at its head. Which side the head is on, and whether it curls in or out, tells many letters apart.</p></div>
+    <div class="part"><h3>Rising tail</h3><div class="eg">ป ฝ ฟ ฬ</div>
+      <p>A stroke that climbs above the top of the other letters.</p></div>
+    <div class="part"><h3>Foot</h3><div class="eg">ฎ ฏ ฐ ญ</div>
+      <p>A curl that hangs below the line.</p></div>
+    <div class="part"><h3>Notch</h3><div class="eg">ต ฃ ฅ</div>
+      <p>A small zigzag cut into the top of the letter.</p></div>
+    <div class="part"><h3>Flick</h3><div class="eg">ช ซ ศ ส</div>
+      <p>A short extra stroke at the top, added to an existing letter.</p></div>
+    <div class="part"><h3>No head</h3><div class="eg">ก</div>
+      <p>A few letters have no loop at all. ก is the most common one.</p></div>
+  </div>
+
+  <h2>Letter families</h2>
+  <p class="lead">The shaded letter is each family's base. The others are drawn on top of it:</p>
+  <div class="legend">
+    <span><span class="sw" style="background: var(--text)"></span>shared with the base</span>
+    <span><span class="sw" style="background: var(--accent)"></span>new in this letter</span>
+    <span><span class="sw" style="background: var(--faint)"></span>in the base, missing here</span>
+  </div>
+  <div class="legend">
+    Consonant class (sets the tone rules later on):
+    <span class="cls cls-mid">mid</span><span class="cls cls-high">high</span><span class="cls cls-low">low</span>
+  </div>
+  <div id="families"></div>
+
+  <h2>Recognition drill</h2>
+  <p class="lead">Pick the name of the letter. Wrong answers come from its own family, so you practice the small differences.</p>
+  <div class="drill">
+    <div class="big" id="d-glyph" lang="th"></div>
+    <div class="opts" id="d-opts"></div>
+    <div class="feedback" id="d-feedback"></div>
+    <div class="score" id="d-score"></div>
+  </div>
+</div>
+
+<script>
+// name: the letter's name (the sound plus a word that starts with it).
+// sound: as a first consonant. cls: consonant class. obs: obsolete, no longer used.
+const L = {
+  "ก": { name: "gaw gài", word: "chicken", sound: "g", cls: "mid" },
+  "ข": { name: "khǎw khài", word: "egg", sound: "kh", cls: "high" },
+  "ฃ": { name: "khǎw khùuat", word: "bottle", sound: "kh", cls: "high", obs: true },
+  "ค": { name: "khaw khwaai", word: "buffalo", sound: "kh", cls: "low" },
+  "ฅ": { name: "khaw khon", word: "person", sound: "kh", cls: "low", obs: true },
+  "ฆ": { name: "khaw rá-khang", word: "bell", sound: "kh", cls: "low" },
+  "ง": { name: "ngaw nguu", word: "snake", sound: "ng", cls: "low" },
+  "จ": { name: "jaw jaan", word: "plate", sound: "j", cls: "mid" },
+  "ฉ": { name: "chǎw chìng", word: "cymbals", sound: "ch", cls: "high" },
+  "ช": { name: "chaw cháang", word: "elephant", sound: "ch", cls: "low" },
+  "ซ": { name: "saw sôh", word: "chain", sound: "s", cls: "low" },
+  "ฌ": { name: "chaw chooe", word: "tree", sound: "ch", cls: "low" },
+  "ญ": { name: "yaw yǐng", word: "woman", sound: "y", cls: "low" },
+  "ฎ": { name: "daw chá-daa", word: "headdress", sound: "d", cls: "mid" },
+  "ฏ": { name: "dtaw bpà-dtàk", word: "goad", sound: "dt", cls: "mid" },
+  "ฐ": { name: "thǎw thǎan", word: "pedestal", sound: "th", cls: "high" },
+  "ฑ": { name: "thaw mon-thoh", word: "Montho (a character)", sound: "th", cls: "low" },
+  "ฒ": { name: "thaw phûu-thâo", word: "elder", sound: "th", cls: "low" },
+  "ณ": { name: "naw neen", word: "novice monk", sound: "n", cls: "low" },
+  "ด": { name: "daw dèk", word: "child", sound: "d", cls: "mid" },
+  "ต": { name: "dtaw dtào", word: "turtle", sound: "dt", cls: "mid" },
+  "ถ": { name: "thǎw thǔng", word: "sack", sound: "th", cls: "high" },
+  "ท": { name: "thaw thá-hǎan", word: "soldier", sound: "th", cls: "low" },
+  "ธ": { name: "thaw thong", word: "flag", sound: "th", cls: "low" },
+  "น": { name: "naw nǔu", word: "mouse", sound: "n", cls: "low" },
+  "บ": { name: "baw bai-mái", word: "leaf", sound: "b", cls: "mid" },
+  "ป": { name: "bpaw bplaa", word: "fish", sound: "bp", cls: "mid" },
+  "ผ": { name: "phǎw phûeng", word: "bee", sound: "ph", cls: "high" },
+  "ฝ": { name: "fǎw fǎa", word: "lid", sound: "f", cls: "high" },
+  "พ": { name: "phaw phaan", word: "tray", sound: "ph", cls: "low" },
+  "ฟ": { name: "faw fan", word: "teeth", sound: "f", cls: "low" },
+  "ภ": { name: "phaw sǎm-phao", word: "junk ship", sound: "ph", cls: "low" },
+  "ม": { name: "maw máa", word: "horse", sound: "m", cls: "low" },
+  "ย": { name: "yaw yák", word: "giant", sound: "y", cls: "low" },
+  "ร": { name: "raw ruea", word: "boat", sound: "r", cls: "low" },
+  "ล": { name: "law ling", word: "monkey", sound: "l", cls: "low" },
+  "ว": { name: "waw wǎaen", word: "ring", sound: "w", cls: "low" },
+  "ศ": { name: "sǎw sǎa-laa", word: "pavilion", sound: "s", cls: "high" },
+  "ษ": { name: "sǎw rue-sǐi", word: "hermit", sound: "s", cls: "high" },
+  "ส": { name: "sǎw sǔea", word: "tiger", sound: "s", cls: "high" },
+  "ห": { name: "hǎw hìip", word: "chest (box)", sound: "h", cls: "high" },
+  "ฬ": { name: "law jù-laa", word: "kite", sound: "l", cls: "low" },
+  "อ": { name: "aw àang", word: "basin", sound: "silent (carries vowels)", cls: "mid" },
+  "ฮ": { name: "haw nók-hûuk", word: "owl", sound: "h", cls: "low" },
+};
+
+// Each family: the base letter first, then letters built from it.
+// diff: what the variant adds, where the difference is simple to name.
+const FAMILIES = [
+  { title: "บ family", note: "Add a rising tail.", members: [
+    ["บ"], ["ป", "tail rises above the line"], ["ษ"] ] },
+  { title: "พ family", note: "Two W-shaped letters, each with a tailed twin.", members: [
+    ["พ"], ["ฟ", "tail rises above the line"], ["ผ"], ["ฝ", "tail rises above the line"] ] },
+  { title: "ด family", note: "Add a notch, then add a foot.", members: [
+    ["ด"], ["ต", "notch at the top"], ["ฎ", "foot below the line"], ["ฏ", "notch and foot"] ] },
+  { title: "ค family", members: [
+    ["ค"], ["ศ", "flick at the top"], ["ฅ", "notch at the top"] ] },
+  { title: "ข family", note: "One flick, then two.", members: [
+    ["ข"], ["ช", "flick on the right"], ["ซ", "flicks on both sides"], ["ฃ", "notch at the top"] ] },
+  { title: "ก family", note: "ก has no head. Give it one, then give that a tail.", members: [
+    ["ก"], ["ถ", "head at the bottom left"], ["ภ"] ] },
+  { title: "ล family", members: [ ["ล"], ["ส", "flick at the top"] ] },
+  { title: "ว family", members: [ ["ว"], ["ร"] ] },
+  { title: "อ family", members: [ ["อ"], ["ฮ", "curl on top"] ] },
+  { title: "น family", members: [ ["น"], ["ม"], ["ห"], ["ฬ"] ] },
+  { title: "ท family", members: [ ["ท"], ["ฑ"] ] },
+  { title: "ย family", members: [ ["ย"], ["ญ", "foot below the line"] ] },
+  { title: "จ family", members: [ ["จ"], ["ฉ"] ] },
+  { title: "Shapes of their own", note: "These don't build on another letter. Learn them as they are.", solo: true, members: [
+    ["ง"], ["ฆ"], ["ฌ"], ["ฐ"], ["ฒ"], ["ณ"], ["ธ"] ] },
+];
+
+const $ = id => document.getElementById(id);
+const FONT = '400 104px Sarabun, Thonburi, "Leelawadee UI", sans-serif';
+const SIZE = 140;
+
+function token(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+// Draw one glyph as an alpha mask, left edge of the ink and baseline fixed,
+// so two letters of a family land on top of each other.
+function mask(ch, px, dx = 0) {
+  const c = document.createElement("canvas");
+  c.width = c.height = px;
+  const g = c.getContext("2d");
+  g.scale(px / SIZE, px / SIZE);
+  g.font = FONT;
+  g.textBaseline = "alphabetic";
+  const m = g.measureText(ch);
+  g.fillText(ch, 30 + dx + m.actualBoundingBoxLeft, 102);
+  return g.getImageData(0, 0, px, px).data;
+}
+
+// Letters in a family differ in width, so slide the base sideways to the
+// position where it shares the most ink with the variant.
+function bestShift(ch, base) {
+  const a = mask(ch, SIZE);
+  let best = 0, bestScore = -1;
+  for (let dx = -30; dx <= 30; dx++) {
+    const b = mask(base, SIZE, dx);
+    let score = 0;
+    for (let i = 3; i < a.length; i += 4) score += Math.min(a[i], b[i]);
+    if (score > bestScore) { bestScore = score; best = dx; }
+  }
+  return best;
+}
+
+function rgb(color) {
+  const c = document.createElement("canvas").getContext("2d");
+  c.fillStyle = color;
+  c.fillRect(0, 0, 1, 1);
+  return c.getImageData(0, 0, 1, 1).data;
+}
+
+// Paint `ch` against `base`: shared ink in text color, new ink in accent,
+// ink only the base has in a faint color.
+function paint(canvas, ch, base) {
+  const px = Math.round(SIZE * (window.devicePixelRatio || 1));
+  canvas.width = canvas.height = px;
+  const g = canvas.getContext("2d");
+  const out = g.createImageData(px, px);
+  const a = mask(ch, px), b = base ? mask(base, px, bestShift(ch, base)) : null;
+  const text = rgb(token("--text")), acc = rgb(token("--accent")), faint = rgb(token("--faint"));
+  for (let i = 3; i < a.length; i += 4) {
+    const mine = a[i], theirs = b ? b[i] : mine;
+    const shared = Math.min(mine, theirs), added = mine - shared, missing = theirs - shared;
+    // Mix the three layers, weighted by coverage.
+    const total = shared + added + missing;
+    if (!total) continue;
+    for (let k = 0; k < 3; k++) {
+      out.data[i - 3 + k] = (text[k] * shared + acc[k] * added + faint[k] * missing) / total;
+    }
+    out.data[i] = Math.min(255, total);
+  }
+  g.putImageData(out, 0, 0);
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+}
+
+function renderFamilies() {
+  $("families").innerHTML = FAMILIES.map((f, fi) => `
+    <section class="family">
+      <header><h3>${esc(f.title)}</h3>${f.note ? `<p>${esc(f.note)}</p>` : ""}</header>
+      <div class="letters">${f.members.map(([ch, diff], mi) => {
+        const d = L[ch], isBase = mi === 0 && !f.solo;
+        return `<div class="letter${isBase ? " base" : ""}">
+          <canvas data-f="${fi}" data-m="${mi}" role="img" aria-label="${ch}"></canvas>
+          <div class="name"><span class="th">${ch}</span> ${esc(d.name)}</div>
+          <div class="meta">${esc(d.word)} · ${esc(d.sound)}</div>
+          <div><span class="cls cls-${d.cls}">${d.cls}</span>${d.obs ? ` <span class="obs">obsolete</span>` : ""}</div>
+          ${diff ? `<div class="diff">${esc(diff)}</div>` : ""}
+        </div>`;
+      }).join("")}</div>
+    </section>`).join("");
+  paintAll();
+}
+
+function paintAll() {
+  document.querySelectorAll("canvas[data-f]").forEach(cv => {
+    const f = FAMILIES[cv.dataset.f], mi = +cv.dataset.m;
+    const ch = f.members[mi][0];
+    const base = f.solo || mi === 0 ? null : f.members[0][0];
+    paint(cv, ch, base);
+  });
+}
+
+// ---- Drill ----
+const ALL = Object.keys(L).filter(ch => !L[ch].obs);
+const familyOf = ch => FAMILIES.find(f => f.members.some(m => m[0] === ch));
+let drill = { ch: null, right: 0, total: 0, answered: false };
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+function nextDrill() {
+  let ch;
+  do { ch = ALL[Math.floor(Math.random() * ALL.length)]; } while (ch === drill.ch);
+  const fam = familyOf(ch);
+  const pool = fam.solo ? [] : fam.members.map(m => m[0]).filter(x => x !== ch && !L[x].obs);
+  const opts = new Set([ch, ...shuffle(pool).slice(0, 3)]);
+  while (opts.size < 4) opts.add(ALL[Math.floor(Math.random() * ALL.length)]);
+  drill.ch = ch;
+  drill.answered = false;
+  $("d-glyph").textContent = ch;
+  $("d-feedback").textContent = "";
+  $("d-opts").innerHTML = shuffle([...opts]).map(o =>
+    `<button data-ch="${o}">${esc(L[o].name)}</button>`).join("");
+  $("d-opts").querySelectorAll("button").forEach(b => b.onclick = () => answer(b));
+}
+
+function answer(btn) {
+  if (drill.answered) { nextDrill(); return; }
+  drill.answered = true;
+  drill.total++;
+  const ok = btn.dataset.ch === drill.ch;
+  if (ok) drill.right++;
+  $("d-opts").querySelectorAll("button").forEach(b => {
+    if (b.dataset.ch === drill.ch) b.classList.add("right");
+    else if (b === btn) b.classList.add("wrong");
+  });
+  const d = L[drill.ch];
+  const picked = L[btn.dataset.ch];
+  $("d-feedback").innerHTML = (ok ? "Right. " : `That was <span class="th">${btn.dataset.ch}</span> ${esc(picked.name)}. `) +
+    `<span class="th">${drill.ch}</span> is <b>${esc(d.name)}</b> (${esc(d.word)}), a ${d.cls}-class “${esc(d.sound)}”. Tap any answer for the next letter.`;
+  $("d-score").textContent = `${drill.right} / ${drill.total} correct`;
+}
+
+document.addEventListener("keydown", e => {
+  if (drill.answered && (e.key === " " || e.key === "Enter") && !e.target.closest("button")) { e.preventDefault(); nextDrill(); }
+});
+
+// Repaint the diffs when the color theme changes.
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paintAll);
+new MutationObserver(paintAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+// Canvas can't wait for web fonts on its own, so load Sarabun first.
+document.fonts.load(FONT, "กขคง").catch(() => {}).finally(() => { renderFamilies(); nextDrill(); });
+</script>
+</body>
+</html>
