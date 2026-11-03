@@ -151,6 +151,11 @@
   .reveal { width: 100%; max-width: 360px; margin-top: 12px; padding: 14px; font-weight: 600; background: var(--text); color: var(--bg); border-color: var(--text); }
   .decks { margin-top: 12px; }
   .play { padding: 2px 8px; font-size: 0.85rem; }
+  .listen-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .sentence { background: var(--bg); border-radius: 12px; padding: 10px 14px; max-width: 100%; display: flex; flex-direction: column; gap: 2px; }
+  .sentence .s-th { font-family: Sarabun, Thonburi, "Leelawadee UI", sans-serif; font-size: 1.25rem; line-height: 1.5; }
+  .sentence .s-ro { color: var(--accent); font-size: 0.95rem; }
+  .sentence .s-en { color: var(--muted); font-size: 0.9rem; }
   tr.cat td { font-weight: 600; color: var(--muted); padding-top: 14px; }
 
   /* Flip card: both faces share one grid cell, so the card is as tall as its
@@ -166,6 +171,8 @@
   }
   .face { cursor: pointer; }
   .face.back { transform: rotateY(180deg); }
+  /* A face turned away still sits under the pointer; let taps pass through it. */
+  .flip.flipped .face.front, .flip:not(.flipped) .face.back { pointer-events: none; }
   .face .ratings { width: 100%; margin-top: 8px; }
   @keyframes deal { from { opacity: 0; transform: translateY(8px); } }
   @media (prefers-reduced-motion: reduce) { .flip { animation: none; } .flip-inner { transition: none; } }
@@ -243,6 +250,7 @@
 
 <script src="srs.js"></script>
 <script src="bangkok100.js"></script>
+<script src="examples.js"></script>
 <script>
 const PHRASES = [
   { th: "สวัสดี", ro: "sà-wàt-dii", en: "Hello / Goodbye", note: "The all-purpose greeting, used for both hello and goodbye." },
@@ -332,7 +340,9 @@ function renderCard() {
   const front = state.dir === "th" ? thaiBlock : enBlock;
   const back = state.dir === "th" ? enBlock : thaiBlock;
   const label = (c.due === null ? "New" : status(c) === "learning" ? "Learning" : "Review") + (p.cat ? ` · ${esc(p.cat)}` : "");
-  const listen = `<button class="speak" type="button" data-speak>🔊 Listen</button>`;
+  const ex = EXAMPLES[p.th];
+  const listen = `<div class="listen-row"><button class="speak" type="button" data-speak>🔊 Listen</button>${
+    ex ? `<button class="speak" type="button" data-sentence>💬 Hear it in a sentence</button>` : ""}</div>`;
   const opts = [["again", "Forgot", 1], ["hard", "Shaky", 2], ["good", "Got it", 3], ["easy", "Nailed it", 4]];
   const ratings = opts.map(([k, name, n]) =>
     `<button class="r-${k}" data-rate="${k}" title="Press ${n}">${name}<small>${fmtInterval(schedule(c, k).interval)}</small></button>`).join("");
@@ -349,14 +359,21 @@ function renderCard() {
         <div class="prompt">${front}</div>
         <hr class="div">
         ${back}${p.note ? `<div class="note">${esc(p.note)}</div>` : ""}${listen}
+        ${ex ? `<div class="sentence" hidden><span class="s-th" lang="th">${esc(ex[0])}</span><span class="s-ro">${esc(ex[1])}</span><span class="s-en">${esc(ex[2])}</span></div>` : ""}
         <div class="ratings">${ratings}</div>
         <div class="hint">Tap the card or press Space to flip it back</div>
       </div>
     </div></div>`;
 
-  $("front").onclick = e => { if (!e.target.closest("[data-speak]")) flip(true); };
+  $("front").onclick = e => { if (!e.target.closest("button")) flip(true); };
+  $("reveal").onclick = () => flip(true);
   $("back").onclick = e => { if (!e.target.closest("button")) flip(false); };
   document.querySelectorAll("[data-speak]").forEach(b => b.onclick = speak);
+  // The sentence plays from either face; its text only shows on the back.
+  document.querySelectorAll("[data-sentence]").forEach(b => b.onclick = () => {
+    speakText(ex[0]);
+    if (b.closest("#back")) $("back").querySelector(".sentence").hidden = false;
+  });
   document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => rate(b.dataset.rate));
 }
 
@@ -425,10 +442,13 @@ function speak() {
   if (current !== null) speakItem(items[current]);
 }
 function speakItem(p) {
+  const e = particle(p);
+  speakText(p.th + (e ? " " + e.th : ""));
+}
+function speakText(text) {
   if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
-  const e = particle(p);
-  const u = new SpeechSynthesisUtterance(p.th + (e ? " " + e.th : ""));
+  const u = new SpeechSynthesisUtterance(text);
   u.lang = "th-TH";
   if (thaiVoice) u.voice = thaiVoice;
   u.rate = 0.8;

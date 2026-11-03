@@ -107,6 +107,11 @@
   .r-again { color: var(--again); } .r-hard { color: var(--hard); } .r-good { color: var(--good); } .r-easy { color: var(--easy); }
   .reveal { width: 100%; max-width: 360px; margin-top: 12px; padding: 14px; font-weight: 600; background: var(--text); color: var(--bg); border-color: var(--text); }
   .speak { font-size: 0.9rem; padding: 6px 12px; }
+  .listen-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .sentence { background: var(--bg); border-radius: 12px; padding: 10px 14px; max-width: 100%; display: flex; flex-direction: column; gap: 2px; }
+  .sentence .s-th { font-family: Sarabun, Thonburi, "Leelawadee UI", sans-serif; font-size: 1.25rem; line-height: 1.5; }
+  .sentence .s-ro { color: var(--accent); font-size: 0.95rem; }
+  .sentence .s-en { color: var(--muted); font-size: 0.9rem; }
 
   /* Flip card: both faces share one grid cell, so the card is as tall as its
      taller face. The back starts turned away and shows when the card flips. */
@@ -121,6 +126,8 @@
   }
   .face { cursor: pointer; }
   .face.back { transform: rotateY(180deg); }
+  /* A face turned away still sits under the pointer; let taps pass through it. */
+  .flip.flipped .face.front, .flip:not(.flipped) .face.back { pointer-events: none; }
   .face .ratings { width: 100%; margin-top: 8px; }
   @keyframes deal { from { opacity: 0; transform: translateY(8px); } }
   @media (prefers-reduced-motion: reduce) { .flip { animation: none; } .flip-inner { transition: none; } }
@@ -175,6 +182,7 @@
 
 <script src="srs.js"></script>
 <script src="thai-data.js"></script>
+<script src="examples.js"></script>
 <script>
 // cat sets the plate color: Bangkok uses blue for transit and roads, green for
 // exits, red for warnings, brown for temples and landmarks.
@@ -279,6 +287,7 @@ function renderCard() {
   const s = SIGNS[current], c = deck.card(current);
   const label = (c.due === null ? "New sign" : status(c) === "learning" ? "Learning" : "Review") + ` · ${esc(CATS[s.cat])}`;
   const plate = `<div class="plate ${s.cat}" lang="th">${esc(s.th)}</div>`;
+  const ex = EXAMPLES[s.th];
   const opts = [["again", "Forgot", 1], ["hard", "Shaky", 2], ["good", "Got it", 3], ["easy", "Nailed it", 4]];
   const ratings = opts.map(([k, name, n]) =>
     `<button class="r-${k}" data-rate="${k}" title="Press ${n}">${name}<small>${fmtInterval(schedule(c, k).interval)}</small></button>`).join("");
@@ -296,7 +305,9 @@ function renderCard() {
         ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
         <hr class="div"><div class="parts" lang="th">${chips(s.th)}</div>
         <div class="legend">consonants · <b class="v">vowels</b> · <b class="t">tone marks</b> · <b class="d">digits</b></div>
-        <button class="speak" id="speak" type="button">🔊 Listen</button>
+        <div class="listen-row"><button class="speak" id="speak" type="button">🔊 Listen</button>${
+          ex ? `<button class="speak" type="button" data-sentence>💬 Hear it in a sentence</button>` : ""}</div>
+        ${ex ? `<div class="sentence" hidden><span class="s-th" lang="th">${esc(ex[0])}</span><span class="s-ro">${esc(ex[1])}</span><span class="s-en">${esc(ex[2])}</span></div>` : ""}
         <div class="ratings">${ratings}</div>
         <div class="hint">Tap the card or press Space to flip it back</div>
       </div>
@@ -304,6 +315,11 @@ function renderCard() {
   $("front").onclick = () => flip(true);
   $("back").onclick = e => { if (!e.target.closest("button")) flip(false); };
   $("speak").onclick = speak;
+  // The sentence plays from either face; its text only shows on the back.
+  document.querySelectorAll("[data-sentence]").forEach(b => b.onclick = () => {
+    speakText(ex[0]);
+    if (b.closest("#back")) $("back").querySelector(".sentence").hidden = false;
+  });
   document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => rate(b.dataset.rate));
 }
 
@@ -356,9 +372,12 @@ function pickVoice() {
 }
 if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 function speak() {
-  if (current === null || !revealed || !("speechSynthesis" in window)) return;
+  if (current !== null && revealed) speakText(SIGNS[current].th);
+}
+function speakText(text) {
+  if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(SIGNS[current].th);
+  const u = new SpeechSynthesisUtterance(text);
   u.lang = "th-TH";
   if (thaiVoice) u.voice = thaiVoice;
   u.rate = 0.8;
