@@ -164,7 +164,7 @@
     min-height: 320px; padding: 24px 20px; display: flex; flex-direction: column; align-items: center;
     justify-content: center; text-align: center; gap: 10px; min-width: 0;
   }
-  .face.front { cursor: pointer; }
+  .face { cursor: pointer; }
   .face.back { transform: rotateY(180deg); }
   .face .ratings { width: 100%; margin-top: 8px; }
   @keyframes deal { from { opacity: 0; transform: translateY(8px); } }
@@ -333,7 +333,7 @@ function renderCard() {
   const back = state.dir === "th" ? enBlock : thaiBlock;
   const label = (c.due === null ? "New" : status(c) === "learning" ? "Learning" : "Review") + (p.cat ? ` · ${esc(p.cat)}` : "");
   const listen = `<button class="speak" type="button" data-speak>🔊 Listen</button>`;
-  const opts = [["again", "Again", 1], ["hard", "Hard", 2], ["good", "Good", 3], ["easy", "Easy", 4]];
+  const opts = [["again", "Forgot", 1], ["hard", "Shaky", 2], ["good", "Got it", 3], ["easy", "Nailed it", 4]];
   const ratings = opts.map(([k, name, n]) =>
     `<button class="r-${k}" data-rate="${k}" title="Press ${n}">${name}<small>${fmtInterval(schedule(c, k).interval)}</small></button>`).join("");
 
@@ -350,10 +350,12 @@ function renderCard() {
         <hr class="div">
         ${back}${p.note ? `<div class="note">${esc(p.note)}</div>` : ""}${listen}
         <div class="ratings">${ratings}</div>
+        <div class="hint">Tap the card or press Space to flip it back</div>
       </div>
     </div></div>`;
 
-  $("front").onclick = e => { if (!e.target.closest("[data-speak]")) reveal(); };
+  $("front").onclick = e => { if (!e.target.closest("[data-speak]")) flip(true); };
+  $("back").onclick = e => { if (!e.target.closest("button")) flip(false); };
   document.querySelectorAll("[data-speak]").forEach(b => b.onclick = speak);
   document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => rate(b.dataset.rate));
 }
@@ -395,13 +397,14 @@ function advance(ahead = false) {
   if (current !== null && state.dir === "th") speak();
 }
 
-function reveal() {
-  if (current === null || revealed) return;
-  revealed = true;
-  $("card").classList.add("flipped");
-  $("front").inert = true;
-  $("back").inert = false;
-  if (state.dir === "en") speak();
+// Turn the card over, either way, so the answer can be peeked at and hidden.
+function flip(show = !revealed) {
+  if (current === null) return;
+  revealed = show;
+  $("card").classList.toggle("flipped", show);
+  $("front").inert = show;
+  $("back").inert = !show;
+  if (show && state.dir === "en") speak();
 }
 
 function rate(r) {
@@ -488,7 +491,7 @@ document.addEventListener("keydown", e => {
   if (e.target.closest && e.target.closest("button") && (e.key === " " || e.key === "Enter")) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === " " || e.key === "Enter") {
-    if (current !== null && !revealed) { e.preventDefault(); reveal(); }
+    if (current !== null) { e.preventDefault(); flip(); }
   } else if (revealed && "1234".includes(e.key)) {
     rate(["again", "hard", "good", "easy"][+e.key - 1]);
   } else if (e.key.toLowerCase() === "s") {
