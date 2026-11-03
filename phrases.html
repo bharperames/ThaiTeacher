@@ -148,16 +148,30 @@
   .r-hard { color: var(--hard); }
   .r-good { color: var(--good); }
   .r-easy { color: var(--easy); }
-  .reveal { width: 100%; margin-top: 12px; padding: 14px; font-weight: 600; background: var(--text); color: var(--bg); border-color: var(--text); }
-  .reveal[disabled] { opacity: 0.45; cursor: default; }
-  .answer {
-    margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
-    padding: 20px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
-  }
+  .reveal { width: 100%; max-width: 360px; margin-top: 12px; padding: 14px; font-weight: 600; background: var(--text); color: var(--bg); border-color: var(--text); }
   .decks { margin-top: 12px; }
   .play { padding: 2px 8px; font-size: 0.85rem; }
   tr.cat td { font-weight: 600; color: var(--muted); padding-top: 14px; }
 
+  /* Flip card: both faces share one grid cell, so the card is as tall as its
+     taller face. The back starts turned away and shows when the card flips. */
+  .flip { perspective: 1400px; animation: deal 0.25s ease-out; }
+  .flip-inner { display: grid; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.2, 1); }
+  .flip.flipped .flip-inner { transform: rotateY(180deg); }
+  .face {
+    grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);
+    min-height: 320px; padding: 24px 20px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; gap: 10px; min-width: 0;
+  }
+  .face.front { cursor: pointer; }
+  .face.back { transform: rotateY(180deg); }
+  .face .ratings { width: 100%; margin-top: 8px; }
+  @keyframes deal { from { opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) { .flip { animation: none; } .flip-inner { transition: none; } }
+  .prompt .thai { font-size: 1.5rem; }
+  .prompt .roman { font-size: 1rem; }
+  .prompt .english { font-size: 1.1rem; color: var(--muted); }
   .done { text-align: center; padding: 40px 16px; }
   .done .big { font-size: 2.5rem; }
   .done p { color: var(--muted); }
@@ -318,24 +332,29 @@ function renderCard() {
   const front = state.dir === "th" ? thaiBlock : enBlock;
   const back = state.dir === "th" ? enBlock : thaiBlock;
   const label = (c.due === null ? "New" : status(c) === "learning" ? "Learning" : "Review") + (p.cat ? ` · ${esc(p.cat)}` : "");
-  const listen = `<button class="speak" id="speak" type="button">🔊 Listen</button>`;
+  const listen = `<button class="speak" type="button" data-speak>🔊 Listen</button>`;
+  const opts = [["again", "Again", 1], ["hard", "Hard", 2], ["good", "Good", 3], ["easy", "Easy", 4]];
+  const ratings = opts.map(([k, name, n]) =>
+    `<button class="r-${k}" data-rate="${k}" title="Press ${n}">${name}<small>${fmtInterval(schedule(c, k).interval)}</small></button>`).join("");
 
-  let html = `<div class="card" id="card" tabindex="0">
-    <div class="tag">${label}</div>${front}${state.dir === "th" ? listen : ""}
-    ${revealed ? "" : `<div class="hint">Tap the card or press Space to reveal</div>`}</div>
-    <button class="reveal" id="reveal" ${revealed ? "disabled" : ""}>Reveal answer</button>`;
-  if (revealed) {
-    html += `<div class="answer" aria-live="polite">${back}${p.note ? `<div class="note">${esc(p.note)}</div>` : ""}${state.dir === "en" ? listen : ""}</div>`;
-    const opts = [["again", "Again", 1], ["hard", "Hard", 2], ["good", "Good", 3], ["easy", "Easy", 4]];
-    html += `<div class="ratings">` + opts.map(([k, name, n]) =>
-      `<button class="r-${k}" data-rate="${k}" title="Press ${n}">${name}<small>${fmtInterval(schedule(c, k).interval)}</small></button>`
-    ).join("") + `</div>`;
-  }
-  $("study").innerHTML = html;
+  $("study").innerHTML = `<div class="flip${revealed ? " flipped" : ""}" id="card">
+    <div class="flip-inner">
+      <div class="face front" id="front" ${revealed ? "inert" : ""}>
+        <div class="tag">${label}</div>${front}${state.dir === "th" ? listen : ""}
+        <button class="reveal" id="reveal" type="button">Reveal answer</button>
+        <div class="hint">or tap the card, or press Space</div>
+      </div>
+      <div class="face back" id="back" aria-live="polite" ${revealed ? "" : "inert"}>
+        <div class="tag">${label}</div>
+        <div class="prompt">${front}</div>
+        <hr class="div">
+        ${back}${p.note ? `<div class="note">${esc(p.note)}</div>` : ""}${listen}
+        <div class="ratings">${ratings}</div>
+      </div>
+    </div></div>`;
 
-  $("card").onclick = e => { if (!e.target.closest("#speak") && !revealed) reveal(); };
-  $("reveal").onclick = reveal;
-  if ($("speak")) $("speak").onclick = speak;
+  $("front").onclick = e => { if (!e.target.closest("[data-speak]")) reveal(); };
+  document.querySelectorAll("[data-speak]").forEach(b => b.onclick = speak);
   document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => rate(b.dataset.rate));
 }
 
@@ -377,8 +396,11 @@ function advance(ahead = false) {
 }
 
 function reveal() {
+  if (current === null || revealed) return;
   revealed = true;
-  render();
+  $("card").classList.add("flipped");
+  $("front").inert = true;
+  $("back").inert = false;
   if (state.dir === "en") speak();
 }
 
