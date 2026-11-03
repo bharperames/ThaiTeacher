@@ -151,11 +151,16 @@
   .decks { margin-top: 12px; }
   .play { padding: 2px 8px; font-size: 0.85rem; }
   .listen-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-  .sentence { background: var(--bg); border-radius: 12px; padding: 10px 14px; max-width: 100%; display: flex; flex-direction: column; gap: 2px; }
+  .sentence { background: var(--bg); border-radius: 12px; padding: 10px 14px; max-width: 100%; display: flex; flex-direction: column; gap: 6px; }
   .sentence[hidden] { display: none; }
-  .sentence .s-th { font-family: Sarabun, Thonburi, "Leelawadee UI", sans-serif; font-size: 1.25rem; line-height: 1.5; }
-  .sentence .s-ro { color: var(--accent); font-size: 0.95rem; }
-  .sentence .s-en { color: var(--muted); font-size: 0.9rem; }
+  .s-words { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 4px; }
+  .s-w { display: flex; flex-direction: column; align-items: center; padding: 2px 5px; border-radius: 6px; }
+  .s-w .s-th { font-family: Sarabun, Thonburi, "Leelawadee UI", sans-serif; font-size: 1.25rem; line-height: 1.4; }
+  .s-w .s-ro { color: var(--accent); font-size: 0.78rem; }
+  .s-w.s-linked .s-th, .s-link { text-decoration: underline dotted var(--muted); text-underline-offset: 4px; }
+  .s-en { color: var(--text); font-size: 0.95rem; }
+  .s-link { border-radius: 4px; padding: 0 1px; }
+  .s-w.hl, .s-link.hl { background: color-mix(in srgb, var(--accent) 24%, transparent); }
   tr.cat td { font-weight: 600; color: var(--muted); padding-top: 14px; }
 
   /* The answer sits under a cover. Cover and answer share one grid cell, so
@@ -346,12 +351,12 @@ function renderCard() {
   const front = state.dir === "th" ? thaiBlock : enBlock;
   const back = state.dir === "th" ? enBlock : thaiBlock;
   const label = (c.due === null ? "New" : status(c) === "learning" ? "Learning" : "Review") + (p.cat ? ` · ${esc(p.cat)}` : "");
-  const ex = EXAMPLES[p.th];
+  const ex = EXAMPLES[p.th] ? parseExample(EXAMPLES[p.th]) : null;
   // Listen and the sentence go with the Thai: on top when the prompt is Thai,
   // in the answer when the answer is Thai.
   const listen = `<div class="listen-row"><button class="speak" type="button" data-speak>🔊 Listen</button>${
     ex ? `<button class="speak" type="button" data-sentence>💬 Hear it in a sentence</button>` : ""}</div>${
-    ex ? `<div class="sentence" hidden><span class="s-th" lang="th">${esc(ex[0])}</span><span class="s-ro">${esc(ex[1])}</span><span class="s-en">${esc(ex[2])}</span></div>` : ""}`;
+    ex ? sentenceHtml(ex) : ""}`;
   const opts = [["again", "Forgot", 1], ["hard", "Shaky", 2], ["good", "Got it", 3], ["easy", "Nailed it", 4]];
   const ratings = opts.map(([k, name, n]) =>
     `<button class="r-${k}" data-rate="${k}" title="Press ${n}">${name}<small>${fmtInterval(schedule(c, k).interval)}</small></button>`).join("");
@@ -378,9 +383,10 @@ function renderCard() {
   document.querySelectorAll("[data-speak]").forEach(b => b.onclick = speak);
   // Play the sentence and show it, with its English, under the button.
   document.querySelectorAll("[data-sentence]").forEach(b => b.onclick = () => {
-    speakText(ex[0]);
+    speakText(ex.speech);
     b.closest(".listen-row").nextElementSibling.hidden = false;
   });
+  wireSentences($("study"));
   document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => rate(b.dataset.rate));
 }
 
