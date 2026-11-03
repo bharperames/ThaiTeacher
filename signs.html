@@ -105,32 +105,38 @@
   .ratings button { display: flex; flex-direction: column; align-items: center; padding: 10px 4px; font-weight: 600; }
   .ratings small { font-weight: 400; color: var(--muted); font-size: 0.8rem; }
   .r-again { color: var(--again); } .r-hard { color: var(--hard); } .r-good { color: var(--good); } .r-easy { color: var(--easy); }
-  .reveal { width: 100%; max-width: 360px; margin-top: 12px; padding: 14px; font-weight: 600; background: var(--text); color: var(--bg); border-color: var(--text); }
   .speak { font-size: 0.9rem; padding: 6px 12px; }
   .listen-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   .sentence { background: var(--bg); border-radius: 12px; padding: 10px 14px; max-width: 100%; display: flex; flex-direction: column; gap: 2px; }
+  .sentence[hidden] { display: none; }
   .sentence .s-th { font-family: Sarabun, Thonburi, "Leelawadee UI", sans-serif; font-size: 1.25rem; line-height: 1.5; }
   .sentence .s-ro { color: var(--accent); font-size: 0.95rem; }
   .sentence .s-en { color: var(--muted); font-size: 0.9rem; }
 
-  /* Flip card: both faces share one grid cell, so the card is as tall as its
-     taller face. The back starts turned away and shows when the card flips. */
-  .flip { perspective: 1400px; animation: deal 0.25s ease-out; }
-  .flip-inner { display: grid; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.2, 1); }
+  /* The answer sits under a cover. Cover and answer share one grid cell, so
+     the cover is exactly the answer's size; tapping it flips it over. */
+  .study-card { cursor: default; animation: deal 0.25s ease-out; }
+  .flip { width: 100%; perspective: 1400px; }
+  .flip-inner { display: grid; transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.2, 1); }
   .flip.flipped .flip-inner { transform: rotateY(180deg); }
   .face {
     grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);
-    min-height: 320px; padding: 24px 20px; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; text-align: center; gap: 10px; min-width: 0;
+    min-height: 120px; border-radius: 14px; padding: 14px; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px;
   }
-  .face { cursor: pointer; }
-  .face.back { transform: rotateY(180deg); }
+  .face.back { transform: rotateY(180deg); cursor: pointer; }
   /* A face turned away still sits under the pointer; let taps pass through it. */
   .flip.flipped .face.front, .flip:not(.flipped) .face.back { pointer-events: none; }
-  .face .ratings { width: 100%; margin-top: 8px; }
+  .cover {
+    font: inherit; color: var(--text); cursor: pointer; border: 1px dashed var(--border);
+    background: repeating-linear-gradient(135deg, var(--bg) 0 10px, var(--surface) 10px 20px);
+  }
+  .cover:hover { border-color: var(--muted); }
+  .cover-label { background: var(--text); color: var(--bg); font-weight: 600; padding: 10px 24px; border-radius: 999px; }
+  .ratings { width: 100%; visibility: hidden; }
+  .ratings.shown { visibility: visible; }
   @keyframes deal { from { opacity: 0; transform: translateY(8px); } }
-  @media (prefers-reduced-motion: reduce) { .flip { animation: none; } .flip-inner { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .study-card { animation: none; } .flip-inner { transition: none; } }
   .prompt .plate { font-size: 1.4rem; padding: 6px 16px; }
   .done { cursor: default; }
   .done p { color: var(--muted); }
@@ -292,33 +298,35 @@ function renderCard() {
   const ratings = opts.map(([k, name, n]) =>
     `<button class="r-${k}" data-rate="${k}" title="Press ${n}">${name}<small>${fmtInterval(schedule(c, k).interval)}</small></button>`).join("");
 
-  $("study").innerHTML = `<div class="flip${revealed ? " flipped" : ""}" id="card">
-    <div class="flip-inner">
-      <div class="face front" id="front" ${revealed ? "inert" : ""}>
-        <div class="tag">${label}</div>${plate}
-        <div class="hint">What does it say?</div>
-        <button class="reveal" id="reveal" type="button">Reveal answer</button>
+  $("study").innerHTML = `<div class="card study-card">
+    <div class="tag">${label}</div>${plate}
+    <hr class="div">
+    <div class="flip${revealed ? " flipped" : ""}" id="card">
+      <div class="flip-inner">
+        <button class="face front cover" id="front" type="button" ${revealed ? "inert" : ""}>
+          <span class="cover-label">Reveal answer</span><span class="hint">What does it say? Tap, or press Space</span>
+        </button>
+        <div class="face back" id="back" aria-live="polite" ${revealed ? "" : "inert"}>
+          <div class="english">${esc(s.en)}</div><div class="roman">${esc(s.ro)}</div>
+          ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
+          <div class="parts" lang="th">${chips(s.th)}</div>
+          <div class="legend">consonants · <b class="v">vowels</b> · <b class="t">tone marks</b> · <b class="d">digits</b></div>
+          <div class="listen-row"><button class="speak" id="speak" type="button">🔊 Listen</button>${
+            ex ? `<button class="speak" type="button" data-sentence>💬 Hear it in a sentence</button>` : ""}</div>
+          ${ex ? `<div class="sentence" hidden><span class="s-th" lang="th">${esc(ex[0])}</span><span class="s-ro">${esc(ex[1])}</span><span class="s-en">${esc(ex[2])}</span></div>` : ""}
+          <div class="hint">Tap here or press Space to cover it again</div>
+        </div>
       </div>
-      <div class="face back" id="back" aria-live="polite" ${revealed ? "" : "inert"}>
-        <div class="prompt">${plate}</div>
-        <div class="english">${esc(s.en)}</div><div class="roman">${esc(s.ro)}</div>
-        ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
-        <hr class="div"><div class="parts" lang="th">${chips(s.th)}</div>
-        <div class="legend">consonants · <b class="v">vowels</b> · <b class="t">tone marks</b> · <b class="d">digits</b></div>
-        <div class="listen-row"><button class="speak" id="speak" type="button">🔊 Listen</button>${
-          ex ? `<button class="speak" type="button" data-sentence>💬 Hear it in a sentence</button>` : ""}</div>
-        ${ex ? `<div class="sentence" hidden><span class="s-th" lang="th">${esc(ex[0])}</span><span class="s-ro">${esc(ex[1])}</span><span class="s-en">${esc(ex[2])}</span></div>` : ""}
-        <div class="ratings">${ratings}</div>
-        <div class="hint">Tap the card or press Space to flip it back</div>
-      </div>
-    </div></div>`;
+    </div>
+    <div class="ratings${revealed ? " shown" : ""}" id="ratings" ${revealed ? "" : "inert"}>${ratings}</div>
+  </div>`;
   $("front").onclick = () => flip(true);
   $("back").onclick = e => { if (!e.target.closest("button")) flip(false); };
   $("speak").onclick = speak;
-  // The sentence plays from either face; its text only shows on the back.
+  // Play the sentence and show it, with its English, under the button.
   document.querySelectorAll("[data-sentence]").forEach(b => b.onclick = () => {
     speakText(ex[0]);
-    if (b.closest("#back")) $("back").querySelector(".sentence").hidden = false;
+    b.closest(".listen-row").nextElementSibling.hidden = false;
   });
   document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => rate(b.dataset.rate));
 }
@@ -359,6 +367,8 @@ function flip(show = !revealed) {
   $("card").classList.toggle("flipped", show);
   $("front").inert = show;
   $("back").inert = !show;
+  $("ratings").inert = !show;
+  $("ratings").classList.toggle("shown", show);
 }
 function rate(r) {
   if (current === null || !revealed) return;
