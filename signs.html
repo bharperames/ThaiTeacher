@@ -198,6 +198,11 @@
   table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
   td, th { padding: 6px 4px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
   th { color: var(--muted); font-weight: 500; }
+  tr[data-i] { cursor: pointer; }
+  tr[data-i]:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  tr[data-i]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  tr.current td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .list-hint { font-size: 0.85rem; color: var(--muted); margin: 8px 0 0; }
   tr.cat td { font-weight: 600; color: var(--muted); padding-top: 14px; }
   td.th { font-size: 1.15rem; }
   .pill { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
@@ -224,6 +229,7 @@
 
   <details>
     <summary>All signs &amp; progress</summary>
+    <p class="list-hint">Tap a row to study that sign now.</p>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Sign</th><th>Meaning</th><th>Status</th><th>Next</th></tr></thead>
@@ -384,9 +390,24 @@ function renderTable() {
     SIGNS.map((s, i) => [s, i]).filter(([s]) => s.cat === cat).map(([s, i]) => {
       const c = deck.card(i), st = status(c);
       const next = c.due === null ? "—" : c.due <= now ? "now" : fmtInterval((c.due - now) / 60000);
-      return `<tr><td class="th">${esc(s.th)}</td><td>${esc(s.en)}<br><small>${esc(s.ro)}</small></td>
+      return `<tr data-i="${i}" tabindex="0" title="Study this sign"${i === current ? ' class="current"' : ""}><td class="th">${esc(s.th)}</td><td>${esc(s.en)}<br><small>${esc(s.ro)}</small></td>
         <td><span class="pill p-${st}">${st}</span></td><td>${next}</td></tr>`;
     }).join("")).join("");
+  wireRows();
+}
+
+// Rows in the list open their card in the study area.
+function wireRows() {
+  $("table").querySelectorAll("tr[data-i]").forEach(tr => {
+    tr.onclick = e => { if (!e.target.closest("button")) jumpTo(Number(tr.dataset.i)); };
+    tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); jumpTo(Number(tr.dataset.i)); } };
+  });
+}
+function jumpTo(i) {
+  current = i;
+  revealed = false;
+  render();
+  $("study").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderCard() {

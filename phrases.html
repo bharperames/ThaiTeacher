@@ -161,6 +161,11 @@
   .s-en { color: var(--text); font-size: 0.95rem; }
   .s-link { border-radius: 4px; padding: 0 1px; }
   .s-w.hl, .s-link.hl { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+  tr[data-i] { cursor: pointer; }
+  tr[data-i]:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  tr[data-i]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  tr.current td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .list-hint { font-size: 0.85rem; color: var(--muted); margin: 8px 0 0; }
   tr.cat td { font-weight: 600; color: var(--muted); padding-top: 14px; }
 
   /* The answer sits under a cover. Cover and answer share one grid cell, so
@@ -245,6 +250,7 @@
 
   <details>
     <summary id="summary">All phrases &amp; progress</summary>
+    <p class="list-hint">Tap a row to study that card now.</p>
     <table>
       <thead><tr><th></th><th>Thai</th><th>Meaning</th><th>Status</th><th>Next</th></tr></thead>
       <tbody id="table"></tbody>
@@ -337,11 +343,26 @@ function renderTable() {
     const next = c.due === null ? "—" : c.due <= now ? "now" : fmtInterval((c.due - now) / 60000);
     const head = p.cat && p.cat !== lastCat ? `<tr class="cat"><td colspan="5">${esc(p.cat)}</td></tr>` : "";
     lastCat = p.cat;
-    return `${head}<tr><td><button class="play" data-play="${i}" type="button" aria-label="Play">🔊</button></td>
+    return `${head}<tr data-i="${i}" tabindex="0" title="Study this card"${i === current ? ' class="current"' : ""}><td><button class="play" data-play="${i}" type="button" aria-label="Play">🔊</button></td>
       <td class="th">${thaiHtml(p)}<br><small>${romanHtml(p)}</small></td><td>${esc(p.en)}</td>
       <td><span class="pill p-${st}">${st}</span></td><td>${next}</td></tr>`;
   }).join("");
   $("table").querySelectorAll("[data-play]").forEach(b => b.onclick = () => speakItem(items[b.dataset.play]));
+  wireRows();
+}
+
+// Rows in the list open their card in the study area.
+function wireRows() {
+  $("table").querySelectorAll("tr[data-i]").forEach(tr => {
+    tr.onclick = e => { if (!e.target.closest("button")) jumpTo(Number(tr.dataset.i)); };
+    tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); jumpTo(Number(tr.dataset.i)); } };
+  });
+}
+function jumpTo(i) {
+  current = i;
+  revealed = false;
+  render();
+  $("study").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderCard() {
