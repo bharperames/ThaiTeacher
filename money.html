@@ -85,8 +85,8 @@
   .series { display: flex; gap: 8px; margin: 8px 0 14px; flex-wrap: wrap; }
   .series button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
   .coins { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
-  .coincard { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; align-items: center; }
-  .coincard .coinbox { display: grid; place-items: center; height: 84px; }
+  .coincard { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 12px; align-items: center; }
+  .coincard .coinbox { display: grid; place-items: center; height: 108px; padding: 0; background: none; border: 0; cursor: pointer; }
   .coin { display: block; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25)); }
   .coincard p { margin: 2px 0 0; font-size: 0.85rem; color: var(--muted); }
 
@@ -141,20 +141,22 @@
 
   <h2>Banknotes</h2>
   <p class="lead">Five notes, each its own color, and each one longer than the last (drawn to scale here). Tap a note
-    to turn it over. The King's portrait is on every front; the backs show two earlier kings each.</p>
+    to turn it over. Every front has the King's portrait right of center, the Garuda emblem at top right and the watermark
+    at left; the backs show two earlier kings each.</p>
   <div class="notes" id="notes"></div>
   <p class="small">Notes from the previous series, with King Bhumibol (Rama IX) on the front, are still legal tender
     and still turn up. They use the same colors and values.</p>
 
   <h2>Coins</h2>
-  <p class="lead">Six coins, drawn to scale. Two series circulate side by side: the 2018 coins have the King's royal
-    monogram on the back, and older ones show a temple.</p>
+  <p class="lead">Six coins, drawn to scale. The value is written in <b>Thai digits</b>, not 0–9: <span class="th">๑ ๒ ๕ ๑๐</span>
+    are 1, 2, 5 and 10, and the year is in the Buddhist calendar (2568 is 2025). Two series circulate side by side: the 2018
+    coins have the King's royal monogram on the back, and older ones show a temple. Tap a coin to turn it over.</p>
   <div class="series" role="group" aria-label="Coin series">
     <button id="s-new" aria-pressed="true">2018 series</button>
     <button id="s-old" aria-pressed="false">Older series</button>
   </div>
   <div class="coins" id="coins"></div>
-  <p class="small">Coins are drawn as plain value faces in the right colors and sizes, not as copies of the real designs.</p>
+  <p class="small">Colors, sizes and what is where are accurate; the monogram, temples and portrait are outlines, not copies of the real designs.</p>
 
   <h2>What things cost</h2>
   <p class="lead">Rough Bangkok prices to calibrate against. They vary a lot by place; tourist areas and malls cost more.</p>
@@ -185,9 +187,11 @@
   </div>
 
   <h2>About the pictures</h2>
-  <p class="small">The Bank of Thailand requires permission to reproduce images of its banknotes, and bars any depiction
-    that could be seen as disrespectful to the monarchy. So the notes here are labeled outlines, marked SPECIMEN, with the
-    portraits left as named frames rather than drawn. For photographs of the real notes, see the
+  <p class="small">Thai banknote and coin designs are copyright, the Bank of Thailand requires permission to reproduce
+    images of its notes, and depictions that could be seen as disrespectful to the monarchy are barred. So these drawings
+    follow the real colors, sizes, layout and security features (the watermark area, windowed thread, Garuda emblem,
+    color-shifting flower and tactile bars) but leave the portraits and royal monogram as named frames, and every note is
+    marked SPECIMEN. For photographs of the real notes, see the
     <a href="https://www.bot.or.th/en/our-roles/banknotes/History-and-Series-of-Banknote-And-Commemorative/banknotes-series.html" rel="noopener">Bank of Thailand's banknote pages</a>.</p>
 </div>
 
@@ -246,7 +250,7 @@ function renderCoins(series) {
   $("s-old").setAttribute("aria-pressed", series === "old");
   $("coins").innerHTML = COINS.map(c => `
     <div class="panel coincard">
-      <div class="coinbox">${coinSvg(c, 3, series)}</div>
+      <button class="coinbox" type="button" data-v="${c.v}" aria-label="Turn the coin over">${coinSvg(c, 3.6, series)}</button>
       <div>
         <h3>${c.v < 1 ? `${c.v * 100} satang` : `฿${c.v}`} <span class="usd">≈ ${fmtUsd(toUsd(c.v)).replace(/^0¢$/, "1¢")}</span></h3>
         <div class="th" lang="th">${c.th}${c.nick ? `, <span style="font-family:Figtree">${esc(c.nick)}</span>` : ""}</div>
@@ -255,6 +259,11 @@ function renderCoins(series) {
         <p>${esc(c.note)}</p>
       </div>
     </div>`).join("");
+  $("coins").querySelectorAll(".coinbox").forEach(b => b.onclick = () => {
+    const c = COINS.find(x => String(x.v) === b.dataset.v);
+    b.dataset.side = b.dataset.side === "portrait" ? "value" : "portrait";
+    b.innerHTML = coinSvg(c, 3.6, series, b.dataset.side);
+  });
 }
 $("s-new").onclick = () => renderCoins("new");
 $("s-old").onclick = () => renderCoins("old");
