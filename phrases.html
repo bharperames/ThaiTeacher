@@ -88,9 +88,13 @@
   }
   .switch button {
     position: relative; z-index: 1; border: 0; background: transparent; border-radius: 999px;
-    padding: 6px 12px; min-width: 3.4em; color: var(--muted);
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    padding: 6px 10px; min-width: 3.4em; color: var(--muted);
     font-family: Sarabun, Thonburi, "Leelawadee UI", sans-serif; font-size: 1rem;
   }
+  .switch .ico { width: 1em; height: 1em; fill: currentColor; flex: none; }
+  .switch #pol-m[aria-checked="true"] .ico { fill: var(--easy); }
+  .switch #pol-f[aria-checked="true"] .ico { fill: var(--again); }
   .switch button[aria-checked="true"] { color: var(--text); font-weight: 600; }
   @media (prefers-reduced-motion: reduce) { .switch .thumb { transition: none; } }
   button {
@@ -111,7 +115,7 @@
     border: 1px solid var(--border);
     border-radius: 18px;
     box-shadow: var(--shadow);
-    min-height: 300px;
+    min-height: 220px;
     padding: 28px 24px;
     display: flex;
     flex-direction: column;
@@ -144,7 +148,15 @@
   .r-hard { color: var(--hard); }
   .r-good { color: var(--good); }
   .r-easy { color: var(--easy); }
-  .reveal { width: 100%; margin-top: 16px; padding: 14px; font-weight: 600; background: var(--text); color: var(--bg); border-color: var(--text); }
+  .reveal { width: 100%; margin-top: 12px; padding: 14px; font-weight: 600; background: var(--text); color: var(--bg); border-color: var(--text); }
+  .reveal[disabled] { opacity: 0.45; cursor: default; }
+  .answer {
+    margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+    padding: 20px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+  }
+  .decks { margin-top: 12px; }
+  .play { padding: 2px 8px; font-size: 0.85rem; }
+  tr.cat td { font-weight: 600; color: var(--muted); padding-top: 14px; }
 
   .done { text-align: center; padding: 40px 16px; }
   .done .big { font-size: 2.5rem; }
@@ -168,10 +180,15 @@
 </head>
 <body>
 <div class="wrap">
-  <nav class="nav"><a href="index.html">← Home</a> · <a href="alphabet.html">Letter anatomy</a></nav>
+  <nav class="nav"><a href="index.html">← Home</a> · <a href="signs.html">Signs</a> · <a href="market.html">Market</a> · <a href="alphabet.html">Letters</a></nav>
   <header>
     <h1><span class="th">ภาษาไทย</span> Phrase Trainer</h1>
   </header>
+
+  <div class="seg decks" role="group" aria-label="Deck">
+    <button id="deck-core" aria-pressed="true">Essentials · 20</button>
+    <button id="deck-bkk" aria-pressed="false">Bangkok 100</button>
+  </div>
 
   <div class="stats">
     <span class="stat-new">New <b id="s-new">0</b></span>
@@ -186,8 +203,8 @@
     </div>
     <div class="switch" id="polite" role="radiogroup" aria-label="Polite ending">
       <span class="thumb" aria-hidden="true"></span>
-      <button id="pol-m" role="radio" aria-checked="true" title="Male speaker">ครับ</button>
-      <button id="pol-f" role="radio" aria-checked="false" title="Female speaker">ค่ะ</button>
+      <button id="pol-m" role="radio" aria-checked="true" title="Male speaker" aria-label="Male speaker, ครับ"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="2.6" r="2.2"/><path d="M4.8 6.2h6.4v5.6H9.9V16H6.1v-4.2H4.8z"/></svg>ครับ</button>
+      <button id="pol-f" role="radio" aria-checked="false" title="Female speaker" aria-label="Female speaker, ค่ะ"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="2.6" r="2.2"/><path d="M6 6.2h4l2.6 6.6H9.7V16H6.3v-3.2H3.4z"/></svg>ค่ะ</button>
       <button id="pol-off" role="radio" aria-checked="false" title="No polite ending">Off</button>
     </div>
   </div>
@@ -195,9 +212,9 @@
   <main id="study"></main>
 
   <details>
-    <summary>All 20 phrases &amp; progress</summary>
+    <summary id="summary">All phrases &amp; progress</summary>
     <table>
-      <thead><tr><th>Thai</th><th>Meaning</th><th>Status</th><th>Next</th></tr></thead>
+      <thead><tr><th></th><th>Thai</th><th>Meaning</th><th>Status</th><th>Next</th></tr></thead>
       <tbody id="table"></tbody>
     </table>
     <div class="foot">
@@ -210,6 +227,8 @@
   <p class="foot">Keys: <kbd>Space</kbd> reveal · <kbd>1</kbd>–<kbd>4</kbd> rate · <kbd>S</kbd> speak</p>
 </div>
 
+<script src="srs.js"></script>
+<script src="bangkok100.js"></script>
 <script>
 const PHRASES = [
   { th: "สวัสดี", ro: "sà-wàt-dii", en: "Hello / Goodbye", note: "The all-purpose greeting, used for both hello and goodbye." },
@@ -236,101 +255,18 @@ const PHRASES = [
 // q: a question (female speakers end it with คะ khá instead of ค่ะ khâ).
 // noPolite: no polite particle (nobody adds one when shouting for help).
 
-// ---- Spaced repetition (simplified SM-2) ----
-// Intervals are stored in minutes. New/lapsed cards go through short learning
-// steps (1 min, 10 min) before graduating to day-scale review intervals.
-const MIN = 1, DAY = 1440;
-const NEW_PER_DAY = 5;
-const STORE_KEY = "thai-srs-v1";
-
-function freshCard() { return { reps: 0, ease: 2.5, interval: 0, due: null, lapses: 0 }; }
-
-function schedule(card, rating) {
-  const c = { ...card };
-  const learning = c.reps === 0;
-  if (rating === "again") {
-    if (!learning) c.lapses++;
-    c.reps = 0;
-    c.interval = 1 * MIN;
-    c.ease = Math.max(1.3, c.ease - 0.2);
-  } else if (rating === "hard") {
-    c.interval = learning ? 5 * MIN : Math.max(DAY, c.interval * 1.2);
-    c.ease = Math.max(1.3, c.ease - 0.15);
-  } else if (rating === "good") {
-    if (learning && c.interval < 10 * MIN) {
-      c.interval = 10 * MIN;              // second learning step
-    } else if (learning) {
-      c.interval = DAY; c.reps = 1;       // graduate
-    } else {
-      c.interval = Math.max(DAY, c.interval * c.ease); c.reps++;
-    }
-  } else if (rating === "easy") {
-    c.interval = learning ? 4 * DAY : Math.max(DAY, c.interval * c.ease * 1.3);
-    c.ease += 0.15;
-    c.reps++;
-  }
-  c.due = Date.now() + c.interval * 60000;
-  return c;
-}
-
-function fmtInterval(min) {
-  if (min < 60) return `${Math.round(min)}m`;
-  if (min < DAY) return `${Math.round(min / 60)}h`;
-  const d = min / DAY;
-  if (d < 30) return `${Math.round(d)}d`;
-  if (d < 365) return `${(d / 30).toFixed(1)}mo`;
-  return `${(d / 365).toFixed(1)}y`;
-}
-
-// ---- State ----
-function today() { return new Date().toDateString(); }
-
-function load() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) {
-      const s = JSON.parse(raw);
-      if (Array.isArray(s.cards) && s.cards.length === PHRASES.length) return { polite: "m", ...s };
-    }
-  } catch (e) {}
-  return { cards: PHRASES.map(freshCard), dir: "th", polite: "m", newDay: today(), newToday: 0 };
-}
-function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
-}
-
-let state = load();
+// The Essentials deck also holds the saved settings: dir, polite, deck.
+const prefs = new SRS.Deck("thai-srs-v1", PHRASES.map(p => p.th), { defaults: { dir: "th", polite: "m", deck: "core" } });
+const state = prefs.state;
+const DECKS = {
+  core: { items: PHRASES, title: "All 20 essentials" },
+  bkk: { items: BANGKOK_100, title: "All 100 Bangkok words & phrases", key: "thai-bkk100-v1" },
+};
+let deck = prefs, items = PHRASES;
+const { fmtInterval, schedule, status } = SRS;
 let current = null;     // index of card being shown
 let revealed = false;
-let extraNew = 0;       // "learn more" bonus for this session
 let timer = null;
-
-function status(c) {
-  if (c.due === null) return "new";
-  return c.reps === 0 ? "learning" : "review";
-}
-
-function rollDay() {
-  if (state.newDay !== today()) { state.newDay = today(); state.newToday = 0; save(); }
-}
-
-function nextCard(ahead = false) {
-  rollDay();
-  const now = Date.now();
-  const seen = state.cards.map((c, i) => ({ c, i })).filter(x => x.c.due !== null);
-  const due = seen.filter(x => x.c.due <= now).sort((a, b) => a.c.due - b.c.due);
-  if (due.length) return due[0].i;
-
-  const newLeft = NEW_PER_DAY + extraNew - state.newToday;
-  if (newLeft > 0) {
-    const n = state.cards.findIndex(c => c.due === null);
-    if (n !== -1) return n;
-  }
-  if (ahead && seen.length) {
-    return seen.sort((a, b) => a.c.due - b.c.due)[0].i;
-  }
-  return null;
-}
 
 // ---- Rendering ----
 const $ = id => document.getElementById(id);
@@ -340,7 +276,7 @@ function esc(s) {
 }
 
 function particle(p) {
-  if (state.polite === "off" || p.noPolite) return null;
+  if (state.polite === "off" || p.noPolite || p.word) return null;
   if (state.polite === "m") return { th: "ครับ", ro: "khráp" };
   return p.q ? { th: "คะ", ro: "khá" } : { th: "ค่ะ", ro: "khâ" };
 }
@@ -354,64 +290,58 @@ function romanHtml(p) {
 }
 
 function renderStats() {
-  const now = Date.now();
-  const newLeft = Math.max(0, NEW_PER_DAY + extraNew - state.newToday);
-  const newCount = Math.min(newLeft, state.cards.filter(c => c.due === null).length);
-  $("s-new").textContent = newCount;
-  $("s-learn").textContent = state.cards.filter(c => c.due !== null && c.reps === 0 && c.due <= now).length;
-  $("s-due").textContent = state.cards.filter(c => c.due !== null && c.reps > 0 && c.due <= now).length;
+  const n = deck.counts();
+  $("s-new").textContent = n.new;
+  $("s-learn").textContent = n.learning;
+  $("s-due").textContent = n.due;
 }
 
 function renderTable() {
   const now = Date.now();
-  $("table").innerHTML = PHRASES.map((p, i) => {
-    const c = state.cards[i], st = status(c);
+  let lastCat = null;
+  $("table").innerHTML = items.map((p, i) => {
+    const c = deck.card(i), st = status(c);
     const next = c.due === null ? "—" : c.due <= now ? "now" : fmtInterval((c.due - now) / 60000);
-    return `<tr><td class="th">${thaiHtml(p)}<br><small>${romanHtml(p)}</small></td><td>${esc(p.en)}</td>
+    const head = p.cat && p.cat !== lastCat ? `<tr class="cat"><td colspan="5">${esc(p.cat)}</td></tr>` : "";
+    lastCat = p.cat;
+    return `${head}<tr><td><button class="play" data-play="${i}" type="button" aria-label="Play">🔊</button></td>
+      <td class="th">${thaiHtml(p)}<br><small>${romanHtml(p)}</small></td><td>${esc(p.en)}</td>
       <td><span class="pill p-${st}">${st}</span></td><td>${next}</td></tr>`;
   }).join("");
+  $("table").querySelectorAll("[data-play]").forEach(b => b.onclick = () => speakItem(items[b.dataset.play]));
 }
 
 function renderCard() {
-  const p = PHRASES[current], c = state.cards[current];
+  const p = items[current], c = deck.card(current);
   const thaiBlock = `<div class="thai" lang="th">${thaiHtml(p)}</div><div class="roman">${romanHtml(p)}</div>`;
   const enBlock = `<div class="english">${esc(p.en)}</div>`;
   const front = state.dir === "th" ? thaiBlock : enBlock;
   const back = state.dir === "th" ? enBlock : thaiBlock;
-  const label = c.due === null ? "New phrase" : status(c) === "learning" ? "Learning" : "Review";
+  const label = (c.due === null ? "New" : status(c) === "learning" ? "Learning" : "Review") + (p.cat ? ` · ${esc(p.cat)}` : "");
+  const listen = `<button class="speak" id="speak" type="button">🔊 Listen</button>`;
 
-  let html = `<div class="card" id="card" tabindex="0" aria-live="polite">
-    <div class="tag">${label}</div>${front}`;
+  let html = `<div class="card" id="card" tabindex="0">
+    <div class="tag">${label}</div>${front}${state.dir === "th" ? listen : ""}
+    ${revealed ? "" : `<div class="hint">Tap the card or press Space to reveal</div>`}</div>
+    <button class="reveal" id="reveal" ${revealed ? "disabled" : ""}>Reveal answer</button>`;
   if (revealed) {
-    html += `<hr class="div">${back}`;
-    if (p.note) html += `<div class="note">${esc(p.note)}</div>`;
-  }
-  if (revealed || state.dir === "th") {
-    html += `<button class="speak" id="speak" type="button">🔊 Listen</button>`;
-  }
-  if (!revealed) html += `<div class="hint">Tap the card or press Space to reveal</div>`;
-  html += `</div>`;
-
-  if (revealed) {
+    html += `<div class="answer" aria-live="polite">${back}${p.note ? `<div class="note">${esc(p.note)}</div>` : ""}${state.dir === "en" ? listen : ""}</div>`;
     const opts = [["again", "Again", 1], ["hard", "Hard", 2], ["good", "Good", 3], ["easy", "Easy", 4]];
     html += `<div class="ratings">` + opts.map(([k, name, n]) =>
       `<button class="r-${k}" data-rate="${k}" title="Press ${n}">${name}<small>${fmtInterval(schedule(c, k).interval)}</small></button>`
     ).join("") + `</div>`;
-  } else {
-    html += `<button class="reveal" id="reveal">Show answer</button>`;
   }
   $("study").innerHTML = html;
 
   $("card").onclick = e => { if (!e.target.closest("#speak") && !revealed) reveal(); };
-  if ($("reveal")) $("reveal").onclick = reveal;
+  $("reveal").onclick = reveal;
   if ($("speak")) $("speak").onclick = speak;
   document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => rate(b.dataset.rate));
 }
 
 function renderDone() {
-  const upcoming = state.cards.filter(c => c.due !== null).map(c => c.due).sort((a, b) => a - b)[0];
-  const unseen = state.cards.filter(c => c.due === null).length;
-  const wait = upcoming ? Math.max(0, upcoming - Date.now()) : null;
+  const { unseen, nextDue } = deck.counts();
+  const wait = nextDue !== null ? Math.max(0, nextDue - Date.now()) : null;
   let msg = "You're all caught up for now.";
   if (wait !== null) msg += ` Next review in <b>${fmtInterval(Math.max(1, wait / 60000))}</b>.`;
 
@@ -422,7 +352,7 @@ function renderDone() {
       ${unseen ? `<button id="more">Learn ${Math.min(5, unseen)} more new</button>` : ""}
       ${wait !== null ? `<button id="ahead">Review ahead</button>` : ""}
     </div></div>`;
-  if ($("more")) $("more").onclick = () => { extraNew += 5; advance(); };
+  if ($("more")) $("more").onclick = () => { deck.extraNew += 5; advance(); };
   if ($("ahead")) $("ahead").onclick = () => advance(true);
 
   // Wake up when a learning card comes due (only for short waits).
@@ -440,7 +370,7 @@ function render() {
 // ---- Actions ----
 function advance(ahead = false) {
   clearTimeout(timer);
-  current = nextCard(ahead);
+  current = deck.next(ahead);
   revealed = false;
   render();
   if (current !== null && state.dir === "th") speak();
@@ -454,9 +384,7 @@ function reveal() {
 
 function rate(r) {
   if (current === null || !revealed) return;
-  if (state.cards[current].due === null) state.newToday++;
-  state.cards[current] = schedule(state.cards[current], r);
-  save();
+  deck.rate(current, r);
   advance();
 }
 
@@ -469,9 +397,12 @@ if ("speechSynthesis" in window) {
   speechSynthesis.onvoiceschanged = pickVoice;
 }
 function speak() {
-  if (current === null || !("speechSynthesis" in window)) return;
+  if (current !== null) speakItem(items[current]);
+}
+function speakItem(p) {
+  if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
-  const p = PHRASES[current], e = particle(p);
+  const e = particle(p);
   const u = new SpeechSynthesisUtterance(p.th + (e ? " " + e.th : ""));
   u.lang = "th-TH";
   if (thaiVoice) u.voice = thaiVoice;
@@ -481,7 +412,7 @@ function speak() {
 
 function setDir(d) {
   state.dir = d;
-  save();
+  deck.save();
   $("dir-th").setAttribute("aria-pressed", d === "th");
   $("dir-en").setAttribute("aria-pressed", d === "en");
   revealed = false;
@@ -489,13 +420,27 @@ function setDir(d) {
 }
 function setPolite(v) {
   state.polite = v;
-  save();
+  deck.save();
   ["m", "f", "off"].forEach((k, i) => {
     $("pol-" + k).setAttribute("aria-checked", k === v);
     if (k === v) $("polite").style.setProperty("--i", i);
   });
   render();
 }
+function setDeck(id) {
+  if (!DECKS[id]) id = "core";
+  state.deck = id;
+  prefs.save();
+  const d = DECKS[id];
+  items = d.items;
+  deck = id === "core" ? prefs : new SRS.Deck(d.key, items.map(p => p.th));
+  $("deck-core").setAttribute("aria-pressed", id === "core");
+  $("deck-bkk").setAttribute("aria-pressed", id === "bkk");
+  $("summary").textContent = `${d.title} & progress`;
+  advance();
+}
+$("deck-core").onclick = () => setDeck("core");
+$("deck-bkk").onclick = () => setDeck("bkk");
 $("pol-m").onclick = () => setPolite("m");
 $("pol-f").onclick = () => setPolite("f");
 $("pol-off").onclick = () => setPolite("off");
@@ -513,10 +458,8 @@ $("reset").onclick = () => {
   }
   clearTimeout(resetArmed); resetArmed = null;
   btn.textContent = "Reset all progress";
-  state = { cards: PHRASES.map(freshCard), dir: state.dir, polite: state.polite, newDay: today(), newToday: 0 };
-  extraNew = 0;
-  save();
-  advance();
+  deck.reset();
+  location.reload();
 };
 
 document.addEventListener("keydown", e => {
@@ -536,8 +479,7 @@ setInterval(() => { renderStats(); renderTable(); }, 30000);
 
 setDir(state.dir);
 setPolite(state.polite);
-current = nextCard();
-render();
+setDeck(state.deck);
 </script>
 </body>
 </html>
